@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مُرتّب المهام — تجربة خوارزمية</title>
+<style>
+  :root { color-scheme: light; --ink:#17212b; --muted:#667482; --line:#dce3e8; --paper:#f5f7f9; --accent:#1e5a78; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif; line-height:1.55; }
+  main { width:min(820px,100%); margin:auto; padding:18px 14px 36px; }
+  header { padding:22px 20px; border-radius:18px; background:#173b50; color:white; }
+  h1 { margin:0 0 6px; font-size:1.55rem; }
+  header p { margin:0; color:#e0ebf0; }
+  section { background:white; border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:14px; }
+  h2 { font-size:1.08rem; margin:0 0 12px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .full { grid-column:1/-1; }
+  label { display:block; font-size:.9rem; font-weight:650; margin-bottom:5px; }
+  input, select { width:100%; border:1px solid #cbd5dc; border-radius:10px; background:white; padding:11px 10px; color:var(--ink); font:inherit; }
+  input[type=range] { padding:0; accent-color:var(--accent); }
+  .range-line { display:flex; align-items:center; gap:10px; }
+  .range-line input { flex:1; }
+  .range-value { min-width:27px; text-align:center; font-weight:750; color:var(--accent); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  button { border:0; border-radius:10px; padding:11px 14px; background:var(--accent); color:white; font:inherit; font-weight:700; cursor:pointer; }
+  button.secondary { background:#e8eef2; color:#18394a; }
+  button:active { transform:translateY(1px); }
+  .hint { color:var(--muted); font-size:.86rem; margin:8px 0 0; }
+  .formula { background:#f3f7f9; border:1px dashed #b9cbd5; border-radius:11px; padding:12px; font-size:.93rem; }
+  .task { padding:13px 0; border-bottom:1px solid var(--line); }
+  .task:last-child { border-bottom:0; padding-bottom:0; }
+  .task-actions { display:flex; align-items:center; gap:8px; }
+  .delete-btn { background:#fbe9e7; color:#922f24; padding:5px 9px; font-size:.8rem; }
+  .task-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .task-name { font-weight:800; overflow-wrap:anywhere; }
+  .score { white-space:nowrap; font-weight:800; color:var(--accent); }
+  .tag { display:inline-block; margin-top:6px; border-radius:6px; padding:3px 8px; font-size:.78rem; font-weight:750; background:#edf1f4; }
+  .critical { background:#fbe9e7; color:#922f24; }
+  .high { background:#fff0d8; color:#84510b; }
+  .medium { background:#e7f1fb; color:#245984; }
+  .low { background:#edf1f4; color:#53616b; }
+  .detail { color:#52616c; font-size:.88rem; margin-top:5px; }
+  .empty { color:var(--muted); padding:8px 0; }
+  .topline { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .count { color:var(--muted); font-size:.86rem; }
+  @media(max-width:480px) { .grid { grid-template-columns:1fr; } .full { grid-column:auto; } main { padding:10px 10px 26px; } header { padding:18px 15px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>مُرتّب المهام</h1>
+  <p>تجربة تفاعلية توضّح كيف تحوّل الخوارزمية المدخلات إلى ترتيب وقرار.</p>
+</header>
+<section>
+  <h2>1. أدخل مهمة جديدة</h2>
+  <form id="taskForm">
+    <div class="grid">
+      <div class="full">
+        <label for="taskName">اسم المهمة</label>
+        <input id="taskName" maxlength="90" placeholder="مثال: إكمال تقرير المختبر" required />
+      </div>
+      <div>
+        <label for="importance">الأهمية (1 = منخفضة، 5 = عالية)</label>
+        <div class="range-line"><input id="importance" type="range" min="1" max="5" value="4" /><span class="range-value" id="importanceVal">4</span></div>
+      </div>
+      <div>
+        <label for="urgency">الاستعجال (1 = يمكن تأجيله، 5 = عاجل جداً)</label>
+        <div class="range-line"><input id="urgency" type="range" min="1" max="5" value="4" /><span class="range-value" id="urgencyVal">4</span></div>
+      </div>
+      <div>
+        <label for="effort">الوقت المتوقع (بالساعات)</label>
+        <input id="effort" type="number" min="0.5" max="10" step="0.5" value="2" required />
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit">أضف المهمة واحسب أولويتها</button>
+      <button type="button" class="secondary" id="sampleBtn">حمّل أمثلة جاهزة</button>
+      <button type="button" class="secondary" id="clearBtn">امسح الكل</button>
+    </div>
+  </form>
+  <p class="hint">غيّر درجات الأهمية والاستعجال أو الوقت، ثم أضف المهمة لترى أثرها في الترتيب. تُحفظ المهام تلقائياً في هذا المتصفح حتى بعد إعادة فتح الصفحة.</p>
+</section>
+<section>
+  <h2>2. قاعدة القرار التي تستخدمها الخوارزمية</h2>
+  <div class="formula">
+    <strong>الدرجة = (الأهمية × 3) + (الاستعجال × 4) − الوقت المتوقع بالساعات</strong><br />
+    إذا كانت الأهمية ≥ 4 والاستعجال = 5: تصنيف «فورية». وإلا: 25 فأكثر «عالية جداً»، 18–24.5 «عالية»، 11–17.5 «متوسطة»، وأقل من 11 «منخفضة».<br />
+    بعد ذلك ترتّب المهام تنازلياً حسب الدرجة.
+  </div>
+  <p class="hint">هذه قاعدة تجريبية للتعلّم وليست معياراً علمياً عاماً لإدارة الوقت. الأوزان والحدود اختيرت لتوضيح منطق الخوارزمية ويمكن تغييرها.</p>
+</section>
+<section>
+  <div class="topline"><h2 style="margin:0">3. النتيجة بعد تنفيذ الخوارزمية</h2><span class="count" id="count">0 مهام</span></div>
+  <div id="results" aria-live="polite"><p class="empty">لا توجد مهام بعد. اضغط «حمّل أمثلة جاهزة» لتجربة الخوارزمية فوراً.</p></div>
+</section>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const storageKey = 'task-priority-demo-tasks-v2';
+  function loadTasks() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return Array.isArray(saved) ? saved.filter((t) => t && typeof t.name === 'string' && Number.isFinite(Number(t.importance)) && Number.isFinite(Number(t.urgency)) && Number.isFinite(Number(t.effort))) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  let tasks = loadTasks();
+  let nextId = tasks.reduce((max, task) => Math.max(max, Number(task.id) || 0), 0) + 1;
+  function saveTasks() {
+    try { localStorage.setItem(storageKey, JSON.stringify(tasks)); }
+    catch (error) { console.warn('تعذر حفظ المهام في هذا المتصفح.', error); }
+  }
+
+  // تحديث الأرقام الظاهرة بجانب أشرطة الاختيار.
+  ['importance', 'urgency'].forEach((id) => {
+    $(id).addEventListener('input', () => $(id + 'Val').textContent = $(id).value);
+  });
+
+  // هذه هي الخوارزمية: تحسب درجة المهمة، ثم تضع لها تصنيفاً.
+  function evaluate(task) {
+    const score = task.importance * 3 + task.urgency * 4 - task.effort;
+    let priority;
+    let level;
+    if (task.importance >= 4 && task.urgency === 5) {
+      priority = 'فورية'; level = 'critical';
+    } else if (score >= 25) {
+      priority = 'عالية جداً'; level = 'critical';
+    } else if (score >= 18) {
+      priority = 'عالية'; level = 'high';
+    } else if (score >= 11) {
+      priority = 'متوسطة'; level = 'medium';
+    } else {
+      priority = 'منخفضة'; level = 'low';
+    }
+    return { ...task, score, priority, level };
+  }
+
+  // تنشئ نسخة محسوبة من المهام وترتبها من الدرجة الأكبر إلى الأصغر.
+  function render() {
+    const ranked = tasks.map(evaluate).sort((a, b) => b.score - a.score || b.urgency - a.urgency);
+    $('count').textContent = `${tasks.length} ${tasks.length === 1 ? 'مهمة' : 'مهام'}`;
+    if (!ranked.length) {
+      $('results').innerHTML = '<p class="empty">لا توجد مهام بعد. اضغط «حمّل أمثلة جاهزة» لتجربة الخوارزمية فوراً.</p>';
+      return;
+    }
+    $('results').innerHTML = ranked.map((t, index) => {
+      const calc = `(${t.importance} × 3) + (${t.urgency} × 4) − ${t.effort} = ${Number(t.score.toFixed(2))}`;
+      return `<article class="task">
+        <div class="task-head"><div><span class="task-name">${index + 1}. ${escapeHTML(t.name)}</span><br><span class="tag ${t.level}">${t.priority}</span></div><div class="task-actions"><span class="score">${Number(t.score.toFixed(2))} نقطة</span><button type="button" class="delete-btn" data-delete="${t.id}" aria-label="حذف ${escapeHTML(t.name)}">حذف</button></div></div>
+        <div class="detail">الأهمية: ${t.importance}/5 · الاستعجال: ${t.urgency}/5 · الوقت: ${t.effort} ساعة</div>
+        <div class="detail">طريقة الحساب: ${calc}</div>
+      </article>`;
+    }).join('');
+  }
+
+  function escapeHTML(value) {
+    return value.replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  }
+
+  $('taskForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const name = $('taskName').value.trim();
+    const importance = Number($('importance').value);
+    const urgency = Number($('urgency').value);
+    const effort = Number($('effort').value);
+    if (!name) return;
+    if (!Number.isFinite(effort) || effort < 0.5 || effort > 10) {
+      alert('أدخل وقتاً بين 0.5 و10 ساعات.'); return;
+    }
+    tasks.push({ id: nextId++, name, importance, urgency, effort });
+    saveTasks();
+    $('taskName').value = '';
+    render();
+  });
+
+  $('sampleBtn').addEventListener('click', () => {
+    tasks = [
+      { id: nextId++, name: 'تسليم تقرير اليوم', importance: 4, urgency: 5, effort: 2 },
+      { id: nextId++, name: 'تعلّم أساسيات Python', importance: 5, urgency: 2, effort: 3 },
+      { id: nextId++, name: 'ترتيب المكتب', importance: 1, urgency: 1, effort: 1 },
+      { id: nextId++, name: 'دفع فاتورة مستحقة', importance: 4, urgency: 4, effort: 1 }
+    ];
+    saveTasks();
+    render();
+  });
+  $('clearBtn').addEventListener('click', () => { tasks = []; saveTasks(); render(); });
+  $('results').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delete]');
+    if (!button) return;
+    const id = Number(button.dataset.delete);
+    tasks = tasks.filter((task) => Number(task.id) !== id);
+    saveTasks();
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
